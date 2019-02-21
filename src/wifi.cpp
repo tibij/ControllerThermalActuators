@@ -7,7 +7,7 @@ const char* password = "monchiX2";
 
 
 int setupWiFi() {    
-    delay(10);
+    delay(15);
     
     // We start by connecting to a WiFi network
     Serial.println();
@@ -18,8 +18,8 @@ int setupWiFi() {
     
     // Loop until we connected but stop after 10 attempts
     int retryCount = 0;
-    while ( (WiFi.status() != WL_CONNECTED) && retryCount < 10 ) {
-        delay(500);
+    while ( (WiFi.status() != WL_CONNECTED) && retryCount < 20 ) {
+        delay(1000);
         Serial.print(".");
         retryCount++;
     }

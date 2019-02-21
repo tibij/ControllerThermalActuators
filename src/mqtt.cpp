@@ -4,18 +4,28 @@
 #include "mqtt.h"
 
 int setupWiFi();
+void controlIncalzireBirou(char* tempValue);
+void subscribeMQTT(const char* mqttTopic);
 
 WiFiClient mqttWiFiClient;
 PubSubClient mqttClient(mqttWiFiClient);
 
 void callback(char* topic, byte* payload, unsigned int length) {
+  
+  char temp[length];
+
   Serial.print("Message arrived [");
   Serial.print(topic);
   Serial.print("] ");
-  for (int i = 0; i < length; i++) {
+  for (unsigned int i = 0; i < length; i++) {
     Serial.print((char)payload[i]);
+    temp[i] = (char)payload[i];
   }
   Serial.println();
+
+  // Subscrierea e unica asa ca putem sa trimitem comanda direct
+  // In caz ca vor fi mai multe subscierei va trebui refacut
+  controlIncalzireBirou(temp);
 }
 
 int reconnect() {
@@ -35,6 +45,7 @@ int reconnect() {
     // Attempt to connect
     if (mqttClient.connect("ESP32ACTUATORE")) {
       Serial.println("Connected to MQTT broker");
+      subscribeMQTT(mqttTopicTemperaturaBirou);
     } else {
       Serial.print("Failed to connect to MQTT broker, return code = ");
       Serial.print(mqttClient.state());
@@ -66,14 +77,14 @@ void setupMQTT() {
 void publishMQTT(const char* mqttTopic, String value) {
     
     int result;
-    char valueString[20];
+    char valueString[value.length()];
 
     // Publish only if connection is fine to MQTT broker
     if ( mqttClient.connected() ) {
         
         mqttClient.loop();
-              
-        value.toCharArray(valueString,20);
+
+        value.toCharArray(valueString,value.length());
         
         Serial.print("Topic: ");
         Serial.print(mqttTopic);
@@ -87,4 +98,29 @@ void publishMQTT(const char* mqttTopic, String value) {
         else
           Serial.println(" Publish: FAILED ");
     }
+}
+
+void subscribeMQTT(const char* mqttTopic) {
+    
+    int result;
+    
+    Serial.println("Subscribing ...");
+
+    // Subscribe only if connection is fine to MQTT broker
+    if ( mqttClient.connected() ) {
+        
+        mqttClient.loop();
+        
+        Serial.print("Subscribe to topic: ");
+        Serial.print(mqttTopic);
+        
+        result = mqttClient.subscribe(mqttTopic);
+        
+        if (result)
+          Serial.println(" Subscribe: SUCCESS");
+        else
+          Serial.println(" Subscribe: FAILED ");
+    }
+    else
+        Serial.println("Could not subscribe. Not connected to MQTT broker.");
 }

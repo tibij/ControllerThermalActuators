@@ -21,7 +21,7 @@ void setup() {
 
 void loop() {
 
-    Serial.println("Citeste temperatura dormitor ...");
+    Serial.print("Citeste temperatura dormitor ... ");
     verificaTemperatura();
     
     // Porneste/opreste incalzirea in dormitor
