@@ -3,13 +3,6 @@
 #include <PubSubClient.h>
 #include "mqtt.h"
 
-int setupWiFi();
-void controlIncalzireBirou(char* tempValue);
-void subscribeMQTT(const char* mqttTopic);
-
-WiFiClient mqttWiFiClient;
-PubSubClient mqttClient(mqttWiFiClient);
-
 void callback(char* topic, byte* payload, unsigned int length) {
   
   char temp[length];
@@ -21,7 +14,19 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.print((char)payload[i]);
     temp[i] = (char)payload[i];
   }
+  temp[length] = '\0';
   Serial.println();
+
+  if (strcmp(topic, mqttTopicTemperaturaDormitorCeruta) == 0)
+    programareIncalzireDormitor(temp); 
+  if (strcmp(topic, mqttTopicTemperaturaBirou) == 0)
+    controlIncalzireBirou(temp);
+  if (strcmp(topic, mqttTopicTemperaturaBirouCeruta) == 0)
+    programareIncalzireBirou(temp);
+  if (strcmp(topic, mqttTopicTemperaturaIrene) == 0)
+    controlIncalzireIrene(temp);
+  if (strcmp(topic, mqttTopicTemperaturaIreneCeruta) == 0)
+    programareIncalzireIrene(temp);
 
   // Subscrierea e unica asa ca putem sa trimitem comanda direct
   // In caz ca vor fi mai multe subscierei va trebui refacut
@@ -45,7 +50,12 @@ int reconnect() {
     // Attempt to connect
     if (mqttClient.connect("ESP32ACTUATORE")) {
       Serial.println("Connected to MQTT broker");
+      subscribeMQTT(mqttTopicTemperaturaDormitorCeruta);
+      subscribeMQTT(mqttTopicTemperaturaIrene);
+      subscribeMQTT(mqttTopicTemperaturaIreneCeruta);
       subscribeMQTT(mqttTopicTemperaturaBirou);
+      subscribeMQTT(mqttTopicTemperaturaBirouCeruta);
+
     } else {
       Serial.print("Failed to connect to MQTT broker, return code = ");
       Serial.print(mqttClient.state());
