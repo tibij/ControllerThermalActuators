@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include "controller.h"
+#include "controller.h" 
 
 void setupGPIOs(){
     pinMode(releuDormitor, OUTPUT);
@@ -16,15 +16,21 @@ void setupGPIOs(){
 }
 
 void verificaTemperatura() {
-    temperaturaDormitor = getTemperature(readTemperature);
-    Serial.println(temperaturaDormitor);
+    getTemperature();
+    Serial.println(readTemperature);
 }
 
 // Control centrale. Se opresc sau pornesc in functie de starile termostatelor si temperatura tur puffer
 void controlIncalzireDormitor(){ 
     
+    float tempDorita;   
+    char convertedTemperature[8];
     int actuatorDeschis = 1;
-    float tempDorita;
+    char actuatorDormitor[2];
+    
+    actuatorDormitor[0] = '1';
+    actuatorDormitor[1] = '\0';
+ 
 
     // Verificam modul de lucru
     if (modPresetatDormitor)
@@ -33,10 +39,12 @@ void controlIncalzireDormitor(){
         tempDorita = tempProgramataDormitor;
     
     // Verificam daca sensorul de temperatura este in parametrii
-    if ((readTemperature != -127) && (readTemperature != 85))
-        if (readTemperature > tempDorita)
+    if (readTemperature > tempDorita){
             // Temperatura a depasit valoarea presetata --> inchidem actuatoarele si oprim incalzirea
-            actuatorDeschis = 0;     
+            actuatorDeschis = 0;
+            actuatorDormitor[0] = '0';
+            actuatorDormitor[1] = '\0';
+    }
 
     if (actuatorDeschis){
         // Actuator pe pozitie deschisa --> se deschide circuitul de incalzire       
@@ -48,12 +56,22 @@ void controlIncalzireDormitor(){
         stareActuatoareDormitor = 0;
         digitalWrite(releuDormitor, HIGH);
     }
+    
+    // Convertim in string temperatura
+    snprintf(convertedTemperature, strlen(convertedTemperature), "%.2f", readTemperature);
+
+    // Publicam starea actuatoarelor din dormitor si temperatura medie
+    publishMQTT(mqttTopicActuatorDormitor, actuatorDormitor);
+    publishMQTT(mqttTopicTemperaturaDormitor, convertedTemperature);
 }
 // Functie de control incalzire camera Irene
-void controlIncalzireIrene(char* tempValue){
+void controlIncalzireIrene(){    
     int actuatorDeschis = 1;
-    float temp = atof(tempValue);
     float tempDorita;
+    char actuatorIrene[2];
+    
+    actuatorIrene[0] = '1';
+    actuatorIrene[1] = '\0';    
 
     // Verificam modul de lucru
     if (modPresetatIrene)
@@ -61,10 +79,12 @@ void controlIncalzireIrene(char* tempValue){
     else
         tempDorita = tempProgramataIrene;    
 
-    if (temp > tempDorita)
+    if (tempInIrene > tempDorita) {
         // Temperatura a depasit valoarea presetata --> inchidem actuatoarele si oprim incalzirea
         actuatorDeschis = 0;
-    
+        actuatorIrene[0] = '0';
+        actuatorIrene[1] = '\0';  
+    }
     if (actuatorDeschis){
         // Actuator pe pozitie deschisa --> se deschide circuitul de incalzire       
         stareActuatoareIrene = 1;
@@ -75,19 +95,17 @@ void controlIncalzireIrene(char* tempValue){
         stareActuatoareIrene = 0;
         digitalWrite(releuIrene, HIGH);
     }
-    Serial.print("Temperatura Irene: ");
-    Serial.println(tempValue);
-    Serial.print("Actuator Irene: ");
-    Serial.println(stareActuatoareIrene);
+    publishMQTT(mqttTopicActuatorIrene, actuatorIrene);
 }
 
 // Functie de control incalzire birou si hol
-void controlIncalzireBirou(char* tempValue){
-
+void controlIncalzireBirou(){
     int actuatorDeschis = 1;
-    
-    float temp = atof(tempValue);
     float tempDorita;
+    char actuatorBirou[2];
+    
+    actuatorBirou[0] = '1';
+    actuatorBirou[1] = '\0';    
 
     // Verificam modul de lucru
     if (modPresetatBirou)
@@ -95,35 +113,31 @@ void controlIncalzireBirou(char* tempValue){
     else
         tempDorita = tempProgramataBirou;
 
-    if (temp > tempDorita)
+    if (tempInBirou > tempDorita) {
             // Temperatura a depasit valoarea setata --> inchidem actuatoarele si oprim incalzirea
             actuatorDeschis = 0;
-    
-    if (actuatorDeschis){
+            actuatorBirou[0] = '0';
+            actuatorBirou[1] = '\0';
+    }
+    if (actuatorDeschis) {
         // Actuator pe pozitie deschisa --> se deschide circuitul de incalzire       
         stareActuatoareBirou = 1;
         digitalWrite(releuBirou, LOW);
     }
-    else
-    {
+    else {
         stareActuatoareBirou = 0;
         digitalWrite(releuBirou, HIGH);
     }
-    Serial.print("Temperatura birou: ");
-    Serial.println(tempValue);
-    Serial.print("Actuator birou: ");
-    Serial.println(stareActuatoareBirou);
+    publishMQTT(mqttTopicActuatorBirou, actuatorBirou);
 }
 
 // Setare mod de incalzire dormitor: programata sau presetata
-void programareIncalzireDormitor(char* tempValue){
-    float temp = atof(tempValue);
-
+void programareIncalzireDormitor(){
     // Daca temperatura este mai mare sau egala cu 100 inseamna ca modul de lucru este presetat
-    if (temp < 100) {
+    if (tempProgramataDormitor < 100) {
         // Trecem pe mod programat
         modPresetatDormitor = 0;
-        tempProgramataDormitor = temp;
+        tempProgramataDormitor = tempProgramataDormitor;
         controlIncalzireDormitor();
     }
     else
@@ -134,17 +148,12 @@ void programareIncalzireDormitor(char* tempValue){
 }
 
 // Setare mod de incalzire birou: programata sau presetata
-void programareIncalzireBirou(char* tempValue){
-    float temp = atof(tempValue);
-    Serial.print("TEMP BIROU PROGRAMATA: ");
-    Serial.println(temp);
+void programareIncalzireBirou(){
     // Daca temperatura este mai mare sau egala cu 100 inseamna ca modul de lucru este presetat
-    if (temp < 100) {
+    if (tempProgramataBirou < 100) {
         // Trecem pe mod programat
-        Serial.println("BIROU MOD PROGRAMAT");
         modPresetatBirou = 0;
-        tempProgramataBirou = temp;
-        controlIncalzireBirou(tempValue);
+        controlIncalzireBirou();
     }
     else
     {
@@ -154,43 +163,16 @@ void programareIncalzireBirou(char* tempValue){
 }
 
 // Setare mod de incalzire Irene: programata sau presetata
-void programareIncalzireIrene(char* tempValue){
-    float temp = atof(tempValue);
-    
+void programareIncalzireIrene(){
     // Daca temperatura este mai mare sau egala cu 100 inseamna ca modul de lucru este presetat
-    if (temp < 100) {
+    if (tempProgramataIrene < 100) {
         // Trecem pe mod programat
         modPresetatIrene = 0;
-        tempProgramataIrene = temp;
-        controlIncalzireIrene(tempValue);
+        controlIncalzireIrene();
     }
     else
     {
          // Trecem pe mod presetat
         modPresetatIrene = 1;   
     }        
-}
-
-// Functie de control incalzire camera Anda
-void controlIncalzireAnda(){
-       
-}
-
-void publicaStareaActuala() {
- 
-    // Convert to string
-    String actuatoareDormitor(stareActuatoareDormitor);
-    String actuatoareIrene(stareActuatoareIrene);
-    String actuatoareBirou(stareActuatoareBirou);
-    // String actuatoareAnda(stareActuatoareAnda);
-     
-    // Publish only if we have connection to MQTT broker
-    int isConnected = checkMQTT();
-    if (isConnected) {
-        publishMQTT(mqttTopicActuatorDormitor, actuatoareDormitor);
-        publishMQTT(mqttTopicTemperaturaDormitor, temperaturaDormitor);
-        publishMQTT(mqttTopicActuatorIrene, actuatoareIrene);
-        publishMQTT(mqttTopicActuatorBirou, actuatoareBirou);
-        // publishMQTT(mqttTopicActuatorAnda, actuatoareAnda);
-    }
 }

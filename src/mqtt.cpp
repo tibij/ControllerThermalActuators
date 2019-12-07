@@ -4,104 +4,125 @@
 #include "mqtt.h"
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  
-  char temp[length];
+  char temp[8];
+  float inTemp;
 
-  Serial.print("Message arrived [");
+  // Allocate the correct amount of memory for the payload copy
+  byte* p = (byte*)malloc(length);
+  // Copy the payload to the new buffer to avoid conflict with another operation
+  memcpy(p,payload,length);  
+
+  Serial.print("Message with lenght ");
+  Serial.print(length);
+  Serial.print(" arrived [");
   Serial.print(topic);
   Serial.print("] ");
+  
   for (unsigned int i = 0; i < length; i++) {
-    Serial.print((char)payload[i]);
-    temp[i] = (char)payload[i];
+    Serial.print((char)p[i]);
+    temp[i] = (char)p[i];
   }
-  temp[length] = '\0';
+
   Serial.println();
+  temp[length] = '\0';
+  // Convert temperature to float
+  inTemp = atof(temp);
+  
+  if (strcmp(topic, mqttTopicTemperaturaIrene) == 0){
+    tempInIrene = inTemp;
+    controlIncalzireIrene();
+  }
+  if (strcmp(topic, mqttTopicTemperaturaBirou) == 0){
+    tempInBirou = inTemp;
+    controlIncalzireBirou();
+  }
+  if (strcmp(topic, mqttTopicTemperaturaDormitorCeruta) == 0){
+    tempProgramataDormitor = inTemp;
+    programareIncalzireDormitor();
+  }
+  if (strcmp(topic, mqttTopicTemperaturaIreneCeruta) == 0){
+    tempProgramataIrene = inTemp;
+    programareIncalzireIrene();
+  }
+  if (strcmp(topic, mqttTopicTemperaturaBirouCeruta) == 0){
+    tempProgramataBirou = inTemp;
+    programareIncalzireBirou();
+  }
 
-  if (strcmp(topic, mqttTopicTemperaturaDormitorCeruta) == 0)
-    programareIncalzireDormitor(temp); 
-  if (strcmp(topic, mqttTopicTemperaturaBirou) == 0)
-    controlIncalzireBirou(temp);
-  if (strcmp(topic, mqttTopicTemperaturaBirouCeruta) == 0)
-    programareIncalzireBirou(temp);
-  if (strcmp(topic, mqttTopicTemperaturaIrene) == 0)
-    controlIncalzireIrene(temp);
-  if (strcmp(topic, mqttTopicTemperaturaIreneCeruta) == 0)
-    programareIncalzireIrene(temp);
-
-  // Subscrierea e unica asa ca putem sa trimitem comanda direct
-  // In caz ca vor fi mai multe subscierei va trebui refacut
-  controlIncalzireBirou(temp);
+  // Free the memory
+  free(p);
 }
 
 int reconnect() {
-
   // Check if WiFi connection is still up and if not try to reconnect
   int wifiStatus = WiFi.status();
+   
   if (wifiStatus != WL_CONNECTED) {
     Serial.print("Attempting to reconnect to WiFi...");
     wifiStatus = setupWiFi();
   }
-
-  // Loop until we're reconnected but stop after 3 attempts or no Internet connection 
-  int retryCount = 0;
-  while (!mqttClient.connected() && (retryCount < 3) && (wifiStatus == WL_CONNECTED) )  {
-    Serial.println("Attempting MQTT connection...");
-    
+ 
+  if (wifiStatus == WL_CONNECTED)
+  {
+    Serial.println("Attempting MQTT PUB connection...");
     // Attempt to connect
-    if (mqttClient.connect("ESP32ACTUATORE")) {
-      Serial.println("Connected to MQTT broker");
-      subscribeMQTT(mqttTopicTemperaturaDormitorCeruta);
+    if (mqttClient.connect("ATMQTTPUB")) {
+      Serial.println("Connected to MQTT broker as ATMQTTPUB client");
+      publishMQTT(mqttTopicAlive, "ATMQTTPUB");
+      //subscribeMQTT(mqttTopicTemperaturaDormitorCeruta);
       subscribeMQTT(mqttTopicTemperaturaIrene);
-      subscribeMQTT(mqttTopicTemperaturaIreneCeruta);
+      //subscribeMQTT(mqttTopicTemperaturaIreneCeruta);
       subscribeMQTT(mqttTopicTemperaturaBirou);
-      subscribeMQTT(mqttTopicTemperaturaBirouCeruta);
-
-    } else {
-      Serial.print("Failed to connect to MQTT broker, return code = ");
-      Serial.print(mqttClient.state());
-      Serial.println(" will try again in 3 seconds");
-
-      // Wait 3 seconds before retrying
-      delay(3000);
+      //subscribeMQTT(mqttTopicTemperaturaBirouCeruta);
     }
-    retryCount++;
+    else
+      ESP.restart();
   }
   return mqttClient.connected();
 }
 
 int checkMQTT() {  
+  // Non-blocking reconnect. If the client loses
+  // its connection, it attempts to reconnect every 5 seconds
+  // without blocking the main loop.
   int isConnected = mqttClient.connected();
-  if (!isConnected)
+  if (!isConnected) {
+    long now = millis();
+    if (now - lastReconnectAttemptPub > 5000) {
+      lastReconnectAttemptPub = now;
       isConnected = reconnect();
+      // Attempt to reconnect
+      if (isConnected) {
+        lastReconnectAttemptPub = 0;
+      }
+    }      
+  }
   else
-      mqttClient.loop();
-  
+    // Client connected
+    mqttClient.loop();
+
   return isConnected;
 }
 
 void setupMQTT() {
   mqttClient.setServer(mqttServer, 1883);
   mqttClient.setCallback(callback);
+  
+  // Estabilish initial connection
+  checkMQTT();  
 }
 
-void publishMQTT(const char* mqttTopic, String value) {
+void publishMQTT(const char* mqttTopic, const char* value) {
     
     int result;
-    char valueString[value.length()];
-
     // Publish only if connection is fine to MQTT broker
     if ( mqttClient.connected() ) {
-        
         mqttClient.loop();
-
-        value.toCharArray(valueString,value.length());
-        
         Serial.print("Topic: ");
         Serial.print(mqttTopic);
         Serial.print(" ");
-        Serial.print(value);
-        
-        result = mqttClient.publish(mqttTopic, valueString, 1);
+        Serial.print(value);    
+        result = mqttClient.publish(mqttTopic, value, 1);
         
         if (result)
           Serial.println(" Publish: SUCCESS");
@@ -133,4 +154,18 @@ void subscribeMQTT(const char* mqttTopic) {
     }
     else
         Serial.println("Could not subscribe. Not connected to MQTT broker.");
+}
+
+int getMQTTClientStaus(){
+
+  return mqttClient.state();
+
+}
+
+int getMQTTClientConnectedState() {
+  return mqttClient.connected();
+}
+
+int keepMQTTAlive(){
+  return mqttClient.loop();
 }

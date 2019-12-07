@@ -3,18 +3,18 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#define PRESET_TEMPERATURE_DORMITOR 23
-#define PRESET_TEMPERATURE_BIROU 22
+#define PRESET_TEMPERATURE_DORMITOR 22
+#define PRESET_TEMPERATURE_BIROU 21
 #define PRESET_TEMPERATURE_IRENE 22
 
-void programareIncalzireDormitor(char* tempValue);
-void controlIncalzireBirou(char* tempValue);
-void programareIncalzireBirou(char* tempValue);
-void controlIncalzireIrene(char* tempValue);
-void programareIncalzireIrene(char* tempValue);
+void programareIncalzireDormitor();
+void controlIncalzireBirou();
+void programareIncalzireBirou();
+void controlIncalzireIrene();
+void programareIncalzireIrene();
 
 // Set output GPIOs. Checked and 4, 16, 17, 21, 22, 25, 26, 32, 33 are ok
-const int releuDormitor = 32; // 
+const int releuDormitor = 32; //
 const int releuIrene = 25;
 const int releuBirou = 27;
 // const int releuAnda = 21;
@@ -36,31 +36,29 @@ int modPresetatAnda = 1;
 float tempProgramataDormitor;
 float tempProgramataBirou;
 float tempProgramataIrene;
-float tempProgramataAnda;
+// float tempProgramataAnda;
+float tempInBirou;
+float tempInIrene;
+// float tempInAnda;
 
-extern const char* mqttTopicTemperaturaDormitor;
-extern const char* mqttTopicActuatorDormitor;
-extern const char* mqttTopicTemperaturaDormitorCeruta;
-extern const char* mqttTopicTemperaturaBirou;
-extern const char* mqttTopicActuatorBirou;
-extern const char* mqttTopicTemperaturaBirouCeruta;
-extern const char* mqttTopicTemperaturaIrene;
-extern const char* mqttTopicActuatorIrene;
-extern const char* mqttTopicTemperaturaIreneCeruta;
+extern const char *mqttTopicTemperaturaDormitor;
+extern const char *mqttTopicActuatorDormitor;
+extern const char *mqttTopicTemperaturaDormitorCeruta;
+extern const char *mqttTopicTemperaturaBirou;
+extern const char *mqttTopicActuatorBirou;
+extern const char *mqttTopicTemperaturaBirouCeruta;
+extern const char *mqttTopicTemperaturaIrene;
+extern const char *mqttTopicActuatorIrene;
+extern const char *mqttTopicTemperaturaIreneCeruta;
 
 // extern const char* mqttTopicTemperaturaAnda;
 // extern const char* mqttTopicActuatorAnda;
 // extern const char* mqttTopicTemperaturaAndaCeruta;
 
-void publishMQTT(const char* mqttTopic, String value);
-
-int checkMQTT();
-
-// Sensori de temperatura
-String temperaturaDormitor;
+void publishMQTT(const char *mqttTopic, const char *value);
 
 float readTemperature = 24.0;
 
-String getTemperature(float& readTemp);
+void getTemperature();
 
 #endif
