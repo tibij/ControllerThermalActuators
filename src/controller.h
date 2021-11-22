@@ -3,9 +3,14 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#define PRESET_TEMPERATURE_DORMITOR 22
-#define PRESET_TEMPERATURE_BIROU 21
-#define PRESET_TEMPERATURE_IRENE 22
+//#define PRESET_TEMPERATURE_DORMITOR 22
+//#define PRESET_TEMPERATURE_BIROU 21
+//#define PRESET_TEMPERATURE_IRENE 22
+
+// Temperaturi presetate pentru fiecare camera
+const float PRESET_TEMPERATURE_DORMITOR = 22.5;
+const float PRESET_TEMPERATURE_BIROU = 21.5;
+const float PRESET_TEMPERATURE_IRENE = 22.0;
 
 void programareIncalzireDormitor();
 void controlIncalzireBirou();
