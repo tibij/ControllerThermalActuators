@@ -8,7 +8,7 @@
 //#define PRESET_TEMPERATURE_IRENE 22
 
 // Temperaturi presetate pentru fiecare camera
-const float PRESET_TEMPERATURE_DORMITOR = 21.5;
+const float PRESET_TEMPERATURE_DORMITOR = 22.0;
 const float PRESET_TEMPERATURE_BIROU = 21.0;
 const float PRESET_TEMPERATURE_IRENE = 22.5;
 
